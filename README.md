@@ -9,13 +9,16 @@
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
 </p>
 
-<!-- <p align="center">
+<p align="center">
   <img src="https://img.shields.io/github/stars/YOUR_USERNAME/ChatGBT-Clone?style=social" alt="Stars">
   <img src="https://img.shields.io/github/forks/YOUR_USERNAME/ChatGBT-Clone?style=social" alt="Forks">
-
-</p> -->
+  <img src="https://img.shields.io/github/last-commit/YOUR_USERNAME/ChatGBT-Clone" alt="Last commit">
+  <img src="https://img.shields.io/github/issues/YOUR_USERNAME/ChatGBT-Clone" alt="Issues">
+</p>
 
 ChatGBT-Clone is an open-source agentic AI chatbot built with Python, FastAPI, LangGraph, LangChain, Google Gemini, Tavily, ChromaDB, and SQLite.
+
+**🔗 Live Demo:** [https://chatgpt-clone-j32n.onrender.com](https://chatgpt-clone-j32n.onrender.com)
 
 It supports real-time streaming chat, document uploads, retrieval-augmented generation (RAG), web search, conversation memory, a **multi-agent orchestration system**, and a simple web UI.
 
@@ -23,7 +26,7 @@ It supports real-time streaming chat, document uploads, retrieval-augmented gene
 
 ## Table of Contents
 
-- [Demo](#demo)
+- [Live Demo](#-live-demo)
 - [Features](#features)
 - [Multi-Agent Architecture](#multi-agent-architecture)
 - [Prerequisites](#prerequisites)
@@ -37,9 +40,11 @@ It supports real-time streaming chat, document uploads, retrieval-augmented gene
 - [Contributing](#contributing)
 - [License](#license)
 
-## Demo
+## 🔗 Live Demo
 
-Once the app is running, you can add a link to a live demo or short walkthrough video here.
+Try the app here: **[https://chatgpt-clone-j32n.onrender.com](https://chatgpt-clone-j32n.onrender.com)**
+
+> Note: this is hosted on Render's free tier, so the app may take 30–60 seconds to wake up if it's been idle.
 
 ## Features
 
