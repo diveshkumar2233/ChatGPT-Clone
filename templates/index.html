@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DiveshGpt</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Tailwind CSS (utility classes / layout) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['"Sora"', 'Inter', 'sans-serif'],
+                        body: ['Inter', 'Arial', 'Helvetica', 'sans-serif'],
+                    },
+                    colors: {
+                        base: {
+                            950: '#0b0b12',
+                            900: '#121218',
+                            850: '#171720',
+                            800: '#1c1c26',
+                            700: '#26262f',
+                            600: '#33333f',
+                        },
+                        accent: {
+                            DEFAULT: '#7c5cff',
+                            soft: '#a78bfa',
+                            dim: '#4c3b99',
+                        },
+                        mint: '#2dd4bf',
+                    },
+                    boxShadow: {
+                        glow: '0 0 30px -8px rgba(124, 92, 255, 0.55)',
+                    },
+                },
+            },
+        };
+    </script>
+
+    <!-- Bootstrap Icons (icon font only — no Bootstrap CSS/JS framework used, to avoid clashing with Tailwind) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        /* Minimal custom CSS only for things Tailwind utilities can't express cleanly (keyframes, scrollbar, textarea autosize ceiling) */
+        html, body { height: 100%; }
+        body { font-family: 'Inter', Arial, Helvetica, sans-serif; }
+
+        #conversationList::-webkit-scrollbar,
+        .chat-scroll::-webkit-scrollbar { width: 6px; }
+        #conversationList::-webkit-scrollbar-thumb,
+        .chat-scroll::-webkit-scrollbar-thumb { background: #33333f; border-radius: 999px; }
+
+        textarea#messageInput { max-height: 170px; }
+
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .tool-spinner { animation: spin 0.8s linear infinite; }
+
+        @keyframes pulseMic {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .mic-recording { animation: pulseMic 1.2s infinite; }
+
+        .input-fade { background: linear-gradient(to top, #0b0b12 78%, transparent); }
+
+        /* Mobile drawer (Tailwind-only, no Bootstrap CSS needed) */
+        #mobileSidebar { transform: translateX(-100%); transition: transform 0.25s ease; }
+        #mobileSidebar.open { transform: translateX(0); }
+        #mobileOverlay { opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+        #mobileOverlay.open { opacity: 1; pointer-events: auto; }
+    </style>
+</head>
+
+<body class="h-screen w-screen overflow-hidden bg-base-950 text-slate-100 flex font-body">
+
+<!-- Sidebar (desktop) -->
+<aside class="hidden md:flex md:w-[270px] shrink-0 bg-base-900 border-r border-base-700 flex-col p-3">
+    <div class="flex items-center gap-2 px-2 py-3 mb-2">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-mint flex items-center justify-center shadow-glow">
+            <i class="bi bi-stars text-sm text-base-950"></i>
+        </div>
+        <span class="font-display font-bold text-lg tracking-tight">DiveshGpt</span>
+    </div>
+
+    <button onclick="newChat()"
+        class="flex items-center gap-2 border border-base-600 hover:bg-base-800 text-slate-100 px-3 py-3 rounded-xl text-sm mb-4 transition-colors">
+        <i class="bi bi-plus-lg"></i> New chat
+    </button>
+
+    <div class="text-xs text-slate-500 px-1 mb-2 uppercase tracking-wide">Recent chats</div>
+    <div id="conversationList" class="flex-1 overflow-y-auto pr-1 space-y-1"></div>
+</aside>
+
+<!-- Mobile sidebar overlay -->
+<div id="mobileOverlay" onclick="closeMobileSidebar()" class="fixed inset-0 bg-black/60 z-40 md:hidden"></div>
+
+<!-- Sidebar (mobile drawer) -->
+<div id="mobileSidebar" class="fixed inset-y-0 left-0 z-50 w-[270px] bg-base-900 border-r border-base-700 flex flex-col p-3 md:hidden">
+    <div class="flex items-center justify-between px-1 py-2 mb-2 border-b border-base-700 pb-3">
+        <span class="font-display font-bold text-lg">DiveshGpt</span>
+        <button onclick="closeMobileSidebar()" class="text-slate-300 hover:text-white text-xl leading-none px-1">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+
+    <button onclick="newChat()"
+        class="flex items-center gap-2 border border-base-600 hover:bg-base-800 text-slate-100 px-3 py-3 rounded-xl text-sm mb-4 w-full">
+        <i class="bi bi-plus-lg"></i> New chat
+    </button>
+
+    <div class="text-xs text-slate-500 px-1 mb-2 uppercase tracking-wide">Recent chats</div>
+    <div id="conversationListMobile" class="flex-1 overflow-y-auto space-y-1"></div>
+</div>
+
+<!-- Main -->
+<main class="flex-1 flex flex-col h-screen bg-base-950 relative">
+
+    <div class="h-14 border-b border-base-700 flex items-center justify-between px-4 md:px-6 shrink-0">
+        <div class="flex items-center gap-3">
+            <button class="md:hidden text-slate-300" onclick="openMobileSidebar()">
+                <i class="bi bi-list text-2xl"></i>
+            </button>
+            <span class="font-semibold text-sm md:text-base">Multi-Agent Assistant</span>
+        </div>
+        <div class="text-xs md:text-sm text-slate-400" id="status">Ready</div>
+    </div>
+
+    <div class="chat-scroll flex-1 overflow-y-auto px-4 md:px-6 pt-8 pb-40" id="chatContainer">
+        <div class="max-w-2xl mx-auto mt-16 text-center" id="welcome">
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-mint mb-5 shadow-glow">
+                <i class="bi bi-cpu text-2xl text-base-950"></i>
+            </div>
+            <h1 class="font-display text-3xl md:text-4xl font-bold mb-3">How can I help you today?</h1>
+            <p class="text-slate-400 text-base">Ask questions, upload documents, use tools, search the web, and chat with memory.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto mt-8" id="cards">
+            <button onclick="usePrompt('Search the web for latest AI agent news.')"
+                class="text-left border border-base-700 hover:border-accent/60 hover:bg-base-850 rounded-2xl p-4 transition-colors group">
+                <i class="bi bi-globe2 text-accent-soft mb-2 text-lg block"></i>
+                <span class="text-sm text-slate-200">Search latest web info</span>
+            </button>
+
+            <button onclick="usePrompt('Summarize the document I uploaded.')"
+                class="text-left border border-base-700 hover:border-accent/60 hover:bg-base-850 rounded-2xl p-4 transition-colors group">
+                <i class="bi bi-file-earmark-text text-accent-soft mb-2 text-lg block"></i>
+                <span class="text-sm text-slate-200">Summarize uploaded document</span>
+            </button>
+
+            <button onclick="usePrompt('Remember that my channel name is dswithbappy.')"
+                class="text-left border border-base-700 hover:border-accent/60 hover:bg-base-850 rounded-2xl p-4 transition-colors group">
+                <i class="bi bi-bookmark-heart text-accent-soft mb-2 text-lg block"></i>
+                <span class="text-sm text-slate-200">Save something to memory</span>
+            </button>
+
+            <button onclick="usePrompt('Calculate 125 * 48 / 6')"
+                class="text-left border border-base-700 hover:border-accent/60 hover:bg-base-850 rounded-2xl p-4 transition-colors group">
+                <i class="bi bi-calculator text-accent-soft mb-2 text-lg block"></i>
+                <span class="text-sm text-slate-200">Use calculator tool</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Input area -->
+    <div class="absolute bottom-0 left-0 right-0 input-fade pt-8 pb-5 px-4 md:px-6">
+        <div class="max-w-2xl mx-auto bg-base-850 border border-base-600 rounded-2xl shadow-glow flex items-end p-2.5">
+
+            <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.txt,.md,.py,.csv" onchange="uploadFile()">
+
+            <button onclick="openFilePicker()" title="Upload document"
+                class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-slate-300 hover:text-white hover:bg-base-700 transition-colors">
+                <i class="bi bi-paperclip text-lg"></i>
+            </button>
+
+            <textarea id="messageInput" rows="1" placeholder="Ask anything..."
+                class="flex-1 bg-transparent border-none outline-none resize-none text-slate-100 placeholder-slate-500 text-base px-2 py-2 min-h-[30px]"
+                oninput="autoResize(this)" onkeydown="handleKeyDown(event)"></textarea>
+
+            <select id="modelSelect" title="Select model"
+                class="hidden sm:block h-10 max-w-[150px] bg-base-800 text-slate-100 border border-base-600 rounded-xl px-2 mx-1 text-xs outline-none cursor-pointer">
+                <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+                <option value="llama-3.3-70b-versatile">groq · llama-3.3-70b</option>
+            </select>
+
+            <button id="micBtn" onclick="toggleDictation()" title="Dictate"
+                class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-slate-300 hover:text-white hover:bg-base-700 transition-colors ml-1">
+                <i class="bi bi-mic text-lg"></i>
+            </button>
+
+            <button id="sendBtn" onclick="sendMessage()"
+                class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-accent hover:bg-accent-soft text-base-950 ml-1 transition-colors disabled:bg-base-600 disabled:text-slate-500">
+                <i class="bi bi-arrow-up-short text-2xl"></i>
+            </button>
+        </div>
+
+        <p class="text-center text-[11px] text-slate-500 mt-2.5" id="noticeText">
+            DiveshGpt can make mistakes. Check important info.
+        </p>
+    </div>
+</main>
+
+<script>
+    const chatContainer = document.getElementById("chatContainer");
+    const messageInput = document.getElementById("messageInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const statusText = document.getElementById("status");
+    const conversationList = document.getElementById("conversationList");
+    const conversationListMobile = document.getElementById("conversationListMobile");
+    const modelSelect = document.getElementById("modelSelect");
+    const noticeText = document.getElementById("noticeText");
+    const micBtn = document.getElementById("micBtn");
+
+    let threadId = localStorage.getItem("thread_id");
+
+    if (!threadId) {
+        threadId = crypto.randomUUID();
+        localStorage.setItem("thread_id", threadId);
+    }
+
+    const savedModel = localStorage.getItem("selected_model");
+    if (savedModel && modelSelect) {
+        modelSelect.value = savedModel;
+    }
+
+    if (modelSelect) {
+        modelSelect.addEventListener("change", () => {
+            localStorage.setItem("selected_model", modelSelect.value);
+            if (noticeText) {
+                noticeText.textContent = `Selected model: ${modelSelect.value}`;
+            }
+        });
+    }
+
+    let recognition = null;
+    let isDictating = false;
+
+    function setupSpeechRecognition() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) return null;
+
+        const speechRecognition = new SpeechRecognition();
+        speechRecognition.lang = "en-US";
+        speechRecognition.continuous = true;
+        speechRecognition.interimResults = true;
+
+        speechRecognition.onstart = () => {
+            isDictating = true;
+            if (micBtn) {
+                micBtn.classList.add("mic-recording", "bg-red-500", "text-white");
+                micBtn.innerHTML = '<i class="bi bi-stop-fill text-lg"></i>';
+            }
+            statusText.textContent = "Listening...";
+        };
+
+        speechRecognition.onresult = (event) => {
+            let finalTranscript = "";
+            let interimTranscript = "";
+
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript + " ";
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+
+            if (finalTranscript) {
+                const currentText = messageInput.value.trim();
+                messageInput.value = currentText ? currentText + " " + finalTranscript.trim() : finalTranscript.trim();
+                autoResize(messageInput);
+            }
+
+            if (interimTranscript && noticeText) {
+                noticeText.textContent = "Listening: " + interimTranscript;
+            }
+        };
+
+        speechRecognition.onerror = (event) => {
+            console.error("Speech recognition error:", event.error);
+            if (event.error === "not-allowed") {
+                alert("Microphone permission denied. Please allow microphone access.");
+            }
+            stopDictation();
+        };
+
+        speechRecognition.onend = () => {
+            if (isDictating) {
+                try { speechRecognition.start(); } catch (error) { stopDictation(); }
+            }
+        };
+
+        return speechRecognition;
+    }
+
+    function toggleDictation() {
+        if (!recognition) recognition = setupSpeechRecognition();
+
+        if (!recognition) {
+            alert("Speech recognition is not supported in this browser. Please use Chrome or Edge.");
+            return;
+        }
+
+        if (isDictating) stopDictation(); else startDictation();
+    }
+
+    function startDictation() {
+        try { recognition.start(); } catch (error) { console.error("Could not start dictation:", error); }
+    }
+
+    function stopDictation() {
+        isDictating = false;
+
+        if (recognition) {
+            try { recognition.stop(); } catch (error) { console.error("Could not stop dictation:", error); }
+        }
+
+        if (micBtn) {
+            micBtn.classList.remove("mic-recording", "bg-red-500", "text-white");
+            micBtn.innerHTML = '<i class="bi bi-mic text-lg"></i>';
+        }
+
+        statusText.textContent = "Ready";
+        if (noticeText) noticeText.textContent = "DiveshGpt can make mistakes. Check important info.";
+        messageInput.focus();
+    }
+
+    function autoResize(textarea) {
+        textarea.style.height = "auto";
+        textarea.style.height = textarea.scrollHeight + "px";
+    }
+
+    function hideWelcome() {
+        const welcome = document.getElementById("welcome");
+        const cards = document.getElementById("cards");
+        if (welcome) welcome.style.display = "none";
+        if (cards) cards.style.display = "none";
+    }
+
+    function handleKeyDown(event) {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    }
+
+    function usePrompt(text) {
+        messageInput.value = text;
+        autoResize(messageInput);
+        messageInput.focus();
+    }
+
+    function openFilePicker() {
+        document.getElementById("fileInput").click();
+    }
+
+    function addMessage(role, content = "") {
+        hideWelcome();
+
+        const isUser = role === "user";
+
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `max-w-3xl mx-auto mb-7 flex gap-3 ${isUser ? "justify-end" : "justify-start"}`;
+
+        const avatar = document.createElement("div");
+        avatar.className = `w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+            isUser ? "bg-accent-dim order-2" : "bg-mint/90 text-base-950"
+        }`;
+        avatar.textContent = isUser ? "U" : "AI";
+
+        const messageContent = document.createElement("div");
+        messageContent.className = isUser
+            ? "order-1 bg-base-800 border border-base-600 rounded-2xl rounded-tr-sm px-4 py-3 max-w-[70%] whitespace-pre-wrap break-words text-[15px]"
+            : "bg-transparent max-w-[75%] whitespace-pre-wrap break-words text-[15px] text-slate-100 leading-relaxed";
+        messageContent.textContent = content;
+
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(messageContent);
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+
+        return messageContent;
+    }
+
+    function detectLikelyTool(message) {
+        const text = message.toLowerCase();
+
+        const mathPattern = /(\d+\s*[\+\-\*\/]\s*\d+)|calculate|calculation|math|solve/;
+        const ragPattern = /document|pdf|file|uploaded|summarize|summary|according to|based on/;
+        const memorySavePattern = /remember that|save this|store this|keep in memory|memorize/;
+        const memoryRecallPattern = /what do you remember|recall|my memory|remember about me/;
+        const webSearchPattern = /latest|current|today|now|recent|news|search web|web search|internet|online|price|version|update|2025|2026|who is|what is happening|trending|release|new model|current ceo|latest version/;
+
+        if (memorySavePattern.test(text)) return "Memory Save";
+        if (memoryRecallPattern.test(text)) return "Memory Recall";
+        if (ragPattern.test(text)) return "Document Search";
+        if (webSearchPattern.test(text)) return "Web Search";
+        if (mathPattern.test(text)) return "Calculator";
+        return null;
+    }
+
+    function addToolProgress(toolName) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "max-w-3xl mx-auto mb-4 flex justify-start";
+
+        const box = document.createElement("div");
+        box.className = "inline-flex items-center gap-2 bg-base-800 border border-base-600 text-slate-300 px-3 py-2 rounded-xl text-xs";
+
+        const icon = document.createElement("span");
+        icon.className = "tool-spinner w-3.5 h-3.5 border-2 border-base-600 border-t-accent rounded-full inline-block";
+
+        const text = document.createElement("span");
+        text.textContent = `Using ${toolName}...`;
+
+        box.appendChild(icon);
+        box.appendChild(text);
+        wrapper.appendChild(box);
+        chatContainer.appendChild(wrapper);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+
+        return { wrapper, icon, text };
+    }
+
+    function completeToolProgress(toolProgress, toolName) {
+        if (!toolProgress) return;
+        toolProgress.icon.className = "text-mint font-bold";
+        toolProgress.icon.textContent = "✓";
+        toolProgress.text.textContent = `${toolName} completed`;
+    }
+
+    function renderConversationItem(conv, container) {
+        const item = document.createElement("div");
+        const isActive = conv.thread_id === threadId;
+
+        item.className = `px-3 py-2.5 rounded-lg text-sm cursor-pointer truncate transition-colors ${
+            isActive ? "bg-base-700 text-white" : "text-slate-300 hover:bg-base-800"
+        }`;
+        item.textContent = conv.title || "New Chat";
+        item.onclick = () => loadConversation(conv.thread_id);
+        container.appendChild(item);
+    }
+
+    async function loadConversations() {
+        try {
+            const response = await fetch("/conversations");
+            const data = await response.json();
+
+            [conversationList, conversationListMobile].forEach(container => {
+                if (!container) return;
+                container.innerHTML = "";
+            });
+
+            if (!data.conversations || data.conversations.length === 0) {
+                [conversationList, conversationListMobile].forEach(container => {
+                    if (!container) return;
+                    container.innerHTML = `<div class="text-slate-500 text-sm px-2 py-2">No chats yet</div>`;
+                });
+                return;
+            }
+
+            data.conversations.forEach(conv => {
+                renderConversationItem(conv, conversationList);
+                if (conversationListMobile) renderConversationItem(conv, conversationListMobile);
+            });
+
+        } catch (error) {
+            console.error("Failed to load conversations:", error);
+        }
+    }
+
+    async function loadConversation(selectedThreadId) {
+        threadId = selectedThreadId;
+        localStorage.setItem("thread_id", threadId);
+
+        try {
+            const response = await fetch(`/history/${threadId}`);
+            const data = await response.json();
+
+            chatContainer.innerHTML = "";
+
+            if (!data.messages || data.messages.length === 0) {
+                renderWelcome();
+                await loadConversations();
+                return;
+            }
+
+            data.messages.forEach(msg => {
+                addMessage(msg.role === "user" ? "user" : "assistant", msg.content);
+            });
+
+            await loadConversations();
+
+        } catch (error) {
+            console.error("Failed to load conversation:", error);
+        }
+    }
+
+    function renderWelcome() {
+        chatContainer.innerHTML = `
+            <div class="max-w-2xl mx-auto mt-16 text-center" id="welcome">
+                <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-mint mb-5 shadow-glow">
+                    <i class="bi bi-cpu text-2xl text-base-950"></i>
+                </div>
+                <h1 class="font-display text-3xl md:text-4xl font-bold mb-3">How can I help you today?</h1>
+                <p class="text-slate-400 text-base">Ask questions, upload documents, use tools, search the web, and chat with memory.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto mt-8" id="cards">
+                <button onclick="usePrompt('Search the web for latest AI agent news.')"
+                    class="text-left border border-base-700 hover:border-accent/60 hover:bg-base-850 rounded-2xl p-4 transition-colors">
+                    <i class="bi bi-globe2 text-accent-soft mb-2 text-lg block"></i>
+                    <span class="text-sm text-slate-200">Search latest web info</span>
+                </button>
+                <button onclick="usePrompt('Summarize the document I uploaded.')"
+                    class="text-left border border-base-700 hover:border-accent/60 hover:bg-base-850 rounded-2xl p-4 transition-colors">
+                    <i class="bi bi-file-earmark-text text-accent-soft mb-2 text-lg block"></i>
+                    <span class="text-sm text-slate-200">Summarize uploaded document</span>
+                </button>
+                <button onclick="usePrompt('Remember that my channel name is dswithbappy.')"
+                    class="text-left border border-base-700 hover:border-accent/60 hover:bg-base-850 rounded-2xl p-4 transition-colors">
+                    <i class="bi bi-bookmark-heart text-accent-soft mb-2 text-lg block"></i>
+                    <span class="text-sm text-slate-200">Save something to memory</span>
+                </button>
+                <button onclick="usePrompt('Calculate 125 * 48 / 6')"
+                    class="text-left border border-base-700 hover:border-accent/60 hover:bg-base-850 rounded-2xl p-4 transition-colors">
+                    <i class="bi bi-calculator text-accent-soft mb-2 text-lg block"></i>
+                    <span class="text-sm text-slate-200">Use calculator tool</span>
+                </button>
+            </div>
+        `;
+    }
+
+    function parseSSEPart(part) {
+        const lines = part.split(/\r?\n/).filter(line => line.trim().startsWith("data:"));
+        if (lines.length === 0) return null;
+
+        const jsonText = lines.map(line => line.replace(/^data:\s*/, "")).join("\n").trim();
+        if (!jsonText || jsonText === "[DONE]") return null;
+
+        try {
+            return JSON.parse(jsonText);
+        } catch (error) {
+            console.error("Invalid stream JSON:", jsonText, error);
+            return null;
+        }
+    }
+
+    async function sendMessage() {
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        if (isDictating) stopDictation();
+
+        const selectedModel = modelSelect ? modelSelect.value : "gemini-2.5-flash";
+
+        addMessage("user", message);
+        messageInput.value = "";
+        messageInput.style.height = "auto";
+
+        sendBtn.disabled = true;
+        statusText.textContent = `Thinking with ${selectedModel}...`;
+
+        const likelyTool = detectLikelyTool(message);
+        let toolProgress = null;
+
+        if (likelyTool) {
+            toolProgress = addToolProgress(likelyTool);
+            statusText.textContent = `Using ${likelyTool}...`;
+        }
+
+        const botElement = addMessage("assistant", "");
+        let firstTokenReceived = false;
+
+        function handleStreamData(data) {
+            if (!data) return;
+
+            if (data.token !== undefined && data.token !== null) {
+                if (!firstTokenReceived) {
+                    firstTokenReceived = true;
+                    if (likelyTool && toolProgress) completeToolProgress(toolProgress, likelyTool);
+                    statusText.textContent = `Generating with ${selectedModel}...`;
+                }
+                botElement.textContent += data.token;
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            if (data.error) {
+                if (likelyTool && toolProgress) completeToolProgress(toolProgress, likelyTool);
+                botElement.textContent += "\n\nError: " + data.error;
+                statusText.textContent = "Ready";
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            if (data.done) {
+                if (likelyTool && toolProgress && !firstTokenReceived) completeToolProgress(toolProgress, likelyTool);
+                statusText.textContent = "Ready";
+            }
+        }
+
+        try {
+            const response = await fetch("/chat/stream", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: message, thread_id: threadId, model: selectedModel })
+            });
+
+            if (!response.ok) {
+                let errorText = "Request failed.";
+                try {
+                    const errorData = await response.json();
+                    errorText = errorData.detail || errorData.message || errorText;
+                } catch (error) {
+                    console.error("Could not parse error response:", error);
+                }
+                botElement.textContent = errorText;
+                return;
+            }
+
+            if (!response.body) {
+                botElement.textContent = "Streaming is not supported by this browser.";
+                return;
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let buffer = "";
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const parts = buffer.split(/\r?\n\r?\n/);
+                buffer = parts.pop() || "";
+
+                for (const part of parts) {
+                    const data = parseSSEPart(part);
+                    handleStreamData(data);
+                }
+            }
+
+            buffer += decoder.decode();
+            if (buffer.trim()) {
+                const data = parseSSEPart(buffer);
+                handleStreamData(data);
+            }
+
+        } catch (error) {
+            console.error("Streaming error:", error);
+            if (likelyTool && toolProgress) completeToolProgress(toolProgress, likelyTool);
+            botElement.textContent = "Something went wrong: " + error.message;
+
+        } finally {
+            sendBtn.disabled = false;
+            statusText.textContent = "Ready";
+            messageInput.focus();
+            await loadConversations();
+        }
+    }
+
+    async function uploadFile() {
+        const fileInput = document.getElementById("fileInput");
+        if (!fileInput.files.length) return;
+
+        const file = fileInput.files[0];
+        addMessage("user", `📎 Uploaded document: ${file.name}`);
+
+        const toolProgress = addToolProgress("Document Ingestion");
+        statusText.textContent = "Using Document Ingestion...";
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("thread_id", threadId);
+
+        try {
+            const response = await fetch("/upload", { method: "POST", body: formData });
+            const data = await response.json();
+
+            completeToolProgress(toolProgress, "Document Ingestion");
+
+            if (data.success) {
+                addMessage("assistant", data.message + "\n\nYou can now ask questions about this document.");
+                await loadConversations();
+            } else {
+                addMessage("assistant", "Upload failed: " + data.message);
+            }
+
+        } catch (error) {
+            completeToolProgress(toolProgress, "Document Ingestion");
+            addMessage("assistant", "Upload failed: " + error.message);
+        }
+
+        statusText.textContent = "Ready";
+        fileInput.value = "";
+    }
+
+    function openMobileSidebar() {
+        document.getElementById("mobileSidebar").classList.add("open");
+        document.getElementById("mobileOverlay").classList.add("open");
+    }
+
+    function closeMobileSidebar() {
+        document.getElementById("mobileSidebar").classList.remove("open");
+        document.getElementById("mobileOverlay").classList.remove("open");
+    }
+
+    async function newChat() {
+        threadId = crypto.randomUUID();
+        localStorage.setItem("thread_id", threadId);
+
+        if (isDictating) stopDictation();
+
+        renderWelcome();
+        await loadConversations();
+        messageInput.focus();
+
+        closeMobileSidebar();
+    }
+
+    loadConversations();
+    if (threadId) loadConversation(threadId);
+</script>
+
+</body>
+</html>
