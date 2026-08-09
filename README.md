@@ -1,4 +1,4 @@
-# ChatGBT-Clone
+# ChatGPT-Clone
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white" alt="Python 3.11">
