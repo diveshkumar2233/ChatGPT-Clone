@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>DiveshGpt</title>
+    <title>DiveshGPT</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- Tailwind CSS (utility classes / layout) -->
@@ -48,7 +48,7 @@
     <style>
         /* Minimal custom CSS only for things Tailwind utilities can't express cleanly (keyframes, scrollbar, textarea autosize ceiling) */
         html, body { height: 100%; }
-        body { font-family: 'Inter', Arial, Helvetica, sans-serif; }
+        body { font-family: 'Inter', Arial, Helvetica, sans-serif; background: radial-gradient(circle at top left, rgba(124, 92, 255, 0.16), transparent 22%), radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.12), transparent 18%), #06070d; }
 
         #conversationList::-webkit-scrollbar,
         .chat-scroll::-webkit-scrollbar { width: 6px; }
@@ -56,6 +56,9 @@
         .chat-scroll::-webkit-scrollbar-thumb { background: #33333f; border-radius: 999px; }
 
         textarea#messageInput { max-height: 170px; }
+        .sidebar-panel { background: rgba(15, 18, 29, 0.95); backdrop-filter: blur(18px); }
+        .chat-panel { background: rgba(6, 7, 13, 0.88); }
+        .welcome-panel { background: rgba(15, 18, 29, 0.9); border: 1px solid rgba(148, 163, 184, 0.12); }
 
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .tool-spinner { animation: spin 0.8s linear infinite; }
@@ -80,21 +83,29 @@
 <body class="h-screen w-screen overflow-hidden bg-base-950 text-slate-100 flex font-body">
 
 <!-- Sidebar (desktop) -->
-<aside class="hidden md:flex md:w-[270px] shrink-0 bg-base-900 border-r border-base-700 flex-col p-3">
-    <div class="flex items-center gap-2 px-2 py-3 mb-2">
-        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-mint flex items-center justify-center shadow-glow">
-            <i class="bi bi-stars text-sm text-base-950"></i>
+<aside class="hidden md:flex md:w-[280px] shrink-0 sidebar-panel border-r border-base-700 flex-col p-4 space-y-4">
+    <div class="flex items-center justify-between gap-3 px-2 py-2 bg-base-900 rounded-3xl border border-base-700 shadow-glow">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-accent to-mint flex items-center justify-center shadow-glow">
+                <i class="bi bi-stars text-lg text-base-950"></i>
+            </div>
+            <div>
+                <div class="font-display font-bold text-lg tracking-tight">DiveshGPT</div>
+                <div class="text-xs text-slate-500">AI chat assistant</div>
+            </div>
         </div>
-        <span class="font-display font-bold text-lg tracking-tight">DiveshGpt</span>
+        <button onclick="newChat()" class="w-10 h-10 rounded-2xl bg-accent hover:bg-accent-soft text-base-950 flex items-center justify-center transition-colors">
+            <i class="bi bi-plus-lg"></i>
+        </button>
     </div>
 
     <button onclick="newChat()"
-        class="flex items-center gap-2 border border-base-600 hover:bg-base-800 text-slate-100 px-3 py-3 rounded-xl text-sm mb-4 transition-colors">
-        <i class="bi bi-plus-lg"></i> New chat
+        class="w-full flex items-center justify-center gap-2 border border-base-600 hover:border-accent hover:bg-base-850 text-slate-100 px-3 py-3 rounded-3xl text-sm font-semibold transition-colors">
+        <i class="bi bi-chat-left-text"></i> New chat
     </button>
 
     <div class="text-xs text-slate-500 px-1 mb-2 uppercase tracking-wide">Recent chats</div>
-    <div id="conversationList" class="flex-1 overflow-y-auto pr-1 space-y-1"></div>
+    <div id="conversationList" class="flex-1 overflow-y-auto pr-1 space-y-2"></div>
 </aside>
 
 <!-- Mobile sidebar overlay -->
@@ -103,7 +114,7 @@
 <!-- Sidebar (mobile drawer) -->
 <div id="mobileSidebar" class="fixed inset-y-0 left-0 z-50 w-[270px] bg-base-900 border-r border-base-700 flex flex-col p-3 md:hidden">
     <div class="flex items-center justify-between px-1 py-2 mb-2 border-b border-base-700 pb-3">
-        <span class="font-display font-bold text-lg">DiveshGpt</span>
+        <span class="font-display font-bold text-lg">DiveshGPT</span>
         <button onclick="closeMobileSidebar()" class="text-slate-300 hover:text-white text-xl leading-none px-1">
             <i class="bi bi-x-lg"></i>
         </button>
@@ -132,12 +143,12 @@
     </div>
 
     <div class="chat-scroll flex-1 overflow-y-auto px-4 md:px-6 pt-8 pb-40" id="chatContainer">
-        <div class="max-w-2xl mx-auto mt-16 text-center" id="welcome">
-            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-mint mb-5 shadow-glow">
-                <i class="bi bi-cpu text-2xl text-base-950"></i>
+        <div class="max-w-2xl mx-auto mt-16 text-center welcome-panel rounded-[32px] p-10 shadow-[0_30px_120px_rgba(124,92,255,0.14)]" id="welcome">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-gradient-to-br from-accent to-mint mb-5 shadow-glow">
+                <i class="bi bi-cpu text-3xl text-base-950"></i>
             </div>
             <h1 class="font-display text-3xl md:text-4xl font-bold mb-3">How can I help you today?</h1>
-            <p class="text-slate-400 text-base">Ask questions, upload documents, use tools, search the web, and chat with memory.</p>
+            <p class="text-slate-400 text-base max-w-xl mx-auto">Ask questions, upload documents, use tools, search the web, and chat with memory. Start a new conversation or continue from your recent chats.</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto mt-8" id="cards">
@@ -202,7 +213,7 @@
         </div>
 
         <p class="text-center text-[11px] text-slate-500 mt-2.5" id="noticeText">
-            DiveshGpt can make mistakes. Check important info.
+            DiveshGPT can make mistakes. Check important info.
         </p>
     </div>
 </main>
@@ -329,7 +340,7 @@
         }
 
         statusText.textContent = "Ready";
-        if (noticeText) noticeText.textContent = "DiveshGpt can make mistakes. Check important info.";
+        if (noticeText) noticeText.textContent = "DiveshGPT can make mistakes. Check important info.";
         messageInput.focus();
     }
 
