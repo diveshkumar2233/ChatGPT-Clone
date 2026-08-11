@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/github/issues/YOUR_USERNAME/ChatGBT-Clone" alt="Issues">
 </p>
 
-ChatGBT-Clone is an open-source agentic AI chatbot built with Python, FastAPI, LangGraph, LangChain, Google Gemini, Tavily, ChromaDB, and SQLite.
+ChatGPT-Clone is an open-source agentic AI chatbot built with Python, FastAPI, LangGraph, LangChain, Google Gemini, Tavily, ChromaDB, and SQLite.
 
 **🔗 Live Demo:** [https://chatgpt-clone-j32n.onrender.com](https://chatgpt-clone-j32n.onrender.com)
 
