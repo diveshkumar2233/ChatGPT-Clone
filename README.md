@@ -1,12 +1,18 @@
-
 # ChatGPT-Clone
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white" alt="Python 3.11">
   <img src="https://img.shields.io/badge/FastAPI-backend-009688?logo=fastapi&logoColor=white" alt="FastAPI">
+  <img src="https://img.shields.io/badge/Jinja-templates-B41717?logo=jinja&logoColor=white" alt="Jinja2">
   <img src="https://img.shields.io/badge/LangGraph-multi--agent-1C3C3C?logo=langgraph&logoColor=white" alt="LangGraph">
+  <img src="https://img.shields.io/badge/🦜🔗_LangChain-tools-1C3C3C?logoColor=white" alt="LangChain">
   <img src="https://img.shields.io/badge/Gemini-LLM-4285F4?logo=googlegemini&logoColor=white" alt="Google Gemini">
+  <img src="https://img.shields.io/badge/Tavily-web--search-0EA5E9?logoColor=white" alt="Tavily">
+  <img src="https://img.shields.io/badge/ChromaDB-vector--store-FF6F00?logoColor=white" alt="ChromaDB">
+  <img src="https://img.shields.io/badge/SQLite-database-003B57?logo=sqlite&logoColor=white" alt="SQLite">
   <img src="https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white" alt="Docker">
+  <img src="https://img.shields.io/badge/AWS-EC2%20%7C%20ECR-FF9900?logo=amazonaws&logoColor=white" alt="AWS">
+  <img src="https://img.shields.io/badge/GitHub_Actions-CI%2FCD-2088FF?logo=githubactions&logoColor=white" alt="GitHub Actions">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
 </p>
 
