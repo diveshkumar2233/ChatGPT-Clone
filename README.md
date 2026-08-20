@@ -25,8 +25,6 @@
 
 ChatGPT-Clone is an open-source agentic AI chatbot built with Python, FastAPI, LangGraph, LangChain, Google Gemini, Tavily, ChromaDB, and SQLite.
 
-**🔗 Live Demo:** [https://chatgpt-clone-3-9d1u.onrender.com](https://chatgpt-clone-3-9d1u.onrender.com/)
-
 It supports real-time streaming chat, document uploads, retrieval-augmented generation (RAG), web search, conversation memory, a **multi-agent orchestration system**, and a simple web UI.
 
 > Replace `YOUR_USERNAME` in the badge URLs above with your actual GitHub username once the repo is pushed — the stars/forks/commit/issues badges pull live data automatically from shields.io, no manual updates needed.
