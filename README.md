@@ -42,7 +42,7 @@ It supports real-time streaming chat, document uploads, retrieval-augmented gene
 
 ## 🔗 Live Demo
 
-Try the app here: **[https://chatgpt-clone-j32n.onrender.com](https://chatgpt-clone-j32n.onrender.com)**
+Try the app here: **[https://chatgpt-clone-j32n.onrender.com](https://chatgpt-clone-3-9d1u.onrender.com/)**
 
 > Note: this is hosted on Render's free tier, so the app may take 30–60 seconds to wake up if it's been idle.
 
