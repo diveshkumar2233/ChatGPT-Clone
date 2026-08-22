@@ -17,23 +17,26 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/stars/YOUR_USERNAME/ChatGBT-Clone?style=social" alt="Stars">
-  <img src="https://img.shields.io/github/forks/YOUR_USERNAME/ChatGBT-Clone?style=social" alt="Forks">
-  <img src="https://img.shields.io/github/last-commit/YOUR_USERNAME/ChatGBT-Clone" alt="Last commit">
-  <img src="https://img.shields.io/github/issues/YOUR_USERNAME/ChatGBT-Clone" alt="Issues">
+  <img src="https://img.shields.io/github/stars/YOUR_USERNAME/ChatGPT-Clone?style=social" alt="Stars">
+  <img src="https://img.shields.io/github/forks/YOUR_USERNAME/ChatGPT-Clone?style=social" alt="Forks">
+  <img src="https://img.shields.io/github/last-commit/YOUR_USERNAME/ChatGPT-Clone" alt="Last commit">
+  <img src="https://img.shields.io/github/issues/YOUR_USERNAME/ChatGPT-Clone" alt="Issues">
 </p>
 
 ChatGPT-Clone is an open-source agentic AI chatbot built with Python, FastAPI, LangGraph, LangChain, Google Gemini, Tavily, ChromaDB, and SQLite.
 
 It supports real-time streaming chat, document uploads, retrieval-augmented generation (RAG), web search, conversation memory, a **multi-agent orchestration system**, and a simple web UI.
 
-> Replace `YOUR_USERNAME` in the badge URLs above with your actual GitHub username once the repo is pushed — the stars/forks/commit/issues badges pull live data automatically from shields.io, no manual updates needed.
+> Replace `YOUR_USERNAME` in the badge URLs above with your actual GitHub username once the repo is pushed.
 
 ## Table of Contents
 
 - [Live Demo](#-live-demo)
+- [What This Is](#what-this-is)
 - [Features](#features)
 - [Multi-Agent Architecture](#multi-agent-architecture)
+- [Results & Performance](#results--performance)
+- [Design Decisions](#design-decisions)
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
 - [Environment Variables](#environment-variables)
@@ -51,10 +54,14 @@ Try the app here: **[https://chatgpt-clone-3-9d1u.onrender.com](https://chatgpt-
 
 > Note: this is hosted on Render's free tier, so the app may take 30–60 seconds to wake up if it's been idle.
 
+## What This Is
+
+A production-style, self-hosted chat assistant that doesn't rely on a single monolithic LLM call. Instead, incoming messages are routed through a small graph of specialized agents (RAG, web search, general chat) built on LangGraph, so each type of query is handled by the component best suited for it — retrieved document context, live web results, or plain conversation — while conversation state persists across turns via SQLite.
+
 ## Features
 
 - Chat with a multi-agent AI system powered by Google Gemini
-- Multiple specialized agents (e.g. router, RAG agent, web-search agent, general chat agent) coordinated via LangGraph
+- Multiple specialized agents (router, RAG agent, web-search agent, general chat agent) coordinated via LangGraph
 - Stream responses in real time
 - Upload documents such as PDF, DOCX, TXT, MD, PY, and CSV
 - Use uploaded files as context through RAG
@@ -80,7 +87,7 @@ This project combines:
 
 ## Multi-Agent Architecture
 
-Instead of a single monolithic chat node, ChatGBT-Clone routes each user message through a graph of specialized agents:
+Instead of a single monolithic chat node, ChatGPT-Clone routes each user message through a graph of specialized agents:
 
 - **Router Agent** — decides which agent(s) should handle the incoming query
 - **RAG Agent** — answers questions using retrieved context from uploaded documents
@@ -109,7 +116,57 @@ flowchart TD
     OUT --> U
 ```
 
-> GitHub renders Mermaid diagrams natively in Markdown — this block will show as a live flowchart on your repo page, no image export needed.
+> GitHub renders Mermaid diagrams natively in Markdown — this block shows as a live flowchart on the repo page, no image export needed.
+
+## Results & Performance
+
+> ⚠️ **Fill this in with real numbers before publishing.** Don't post placeholder or guessed metrics — reviewers (and interviewers) will ask how you measured them. Suggested things to actually measure and report:
+
+| Metric | How to measure it |
+|---|---|
+| Router classification accuracy | Hand-label ~50–100 sample queries by intended agent, run them through the router, compute accuracy |
+| Average response latency (streaming, first token) | Time from request sent to first streamed token, averaged over N runs |
+| RAG retrieval relevance | Manually score top-k retrieved chunks on a sample of document Q&A queries |
+| Uptime / usage | Pull from Render logs or your own request counter if you've deployed it |
+
+Once you have real numbers, replace this table with a short results section (2–4 stats max, each with a one-line note on how it was measured).
+
+## Design Decisions
+
+Full reasoning also lives in [`DECISIONS.md`](./DECISIONS.md). Key choices below.
+
+### 1. LangGraph multi-agent routing instead of one big prompt
+
+**Choice:** Route each incoming message through a Router Agent that dispatches to a RAG agent, a web-search agent, or a general chat agent, instead of handling everything with a single system prompt and a big toolset.
+
+**Why:** A single agent with many tools tends to guess wrong about which tool to reach for as the tool count grows, and it's hard to reason about or test in isolation. Splitting by responsibility means each agent only needs to be good at one thing (retrieval, search, or plain conversation), and the routing decision itself is testable independently of the agents it dispatches to.
+
+**Trade-offs considered:**
+- Adds an extra LLM call (the router) before the "real" answer starts, which costs latency on every request.
+- More moving parts to maintain than a single chain — three agent files instead of one, plus the graph wiring.
+- Worth it here because the project needs to demonstrate agent orchestration, and because it makes it straightforward to add a new agent (e.g. a code-execution agent) without touching the others.
+
+### 2. ChromaDB for the vector store
+
+**Choice:** ChromaDB, running locally/embedded, for document retrieval instead of a managed vector DB (Pinecone, Weaviate Cloud, etc.).
+
+**Why:** No external account or network dependency to set up, it runs fine inside the same Docker container as the rest of the app, and it's a natural fit for a portfolio project where uploaded documents are per-session rather than at production scale.
+
+**Trade-offs considered:**
+- Won't scale the same way a managed service would under heavy concurrent load or very large document sets.
+- No built-in multi-tenant isolation — fine for a single-user demo, would need rework for a real multi-user product.
+- Chosen over a managed vector DB specifically to avoid extra paid infrastructure for a project that's meant to run on a free-tier host.
+
+### 3. SQLite for conversation memory / checkpointing
+
+**Choice:** SQLite-backed LangGraph checkpointing for conversation state, instead of Redis or a hosted Postgres instance.
+
+**Why:** Zero additional infrastructure — it's a file on disk, which matches the single-container Docker deployment and keeps the free-tier Render hosting simple.
+
+**Trade-offs considered:**
+- Doesn't support concurrent writers well, so it wouldn't hold up under multiple simultaneous users hitting the same DB file hard.
+- No built-in replication — if the container is destroyed without a persistent volume, history is lost.
+- Acceptable here because the project's goal is to demonstrate the memory/checkpointing pattern, not to serve production traffic; swapping to Postgres later is a small change since LangGraph's checkpoint interface is storage-agnostic.
 
 ## Prerequisites
 
@@ -134,13 +191,13 @@ Optional for deployment:
 ### 1. Clone the repository
 
 ```
-git clone https://github.com/<your-username>/ChatGBT-Clone.git
+git clone https://github.com/<your-username>/ChatGPT-Clone.git
 ```
 
 ### 2. Navigate to the project directory
 
 ```
-cd ChatGBT-Clone
+cd ChatGPT-Clone
 ```
 
 ### 3. Create a virtual environment
@@ -176,7 +233,7 @@ TAVILY_API_KEY=your_tavily_api_key
 LANGSMITH_TRACING=false
 LANGSMITH_ENDPOINT=https://api.smith.langchain.com
 LANGSMITH_API_KEY=your_langsmith_api_key
-LANGSMITH_PROJECT=chatgbt-clone
+LANGSMITH_PROJECT=chatgpt-clone
 ```
 
 If you do not want to use LangSmith tracing, keep:
@@ -202,7 +259,7 @@ http://127.0.0.1:8080
 ## Project Structure
 
 ```
-ChatGBT-Clone/
+ChatGPT-Clone/
 │
 ├── app.py                  # FastAPI app and streaming chat endpoints
 ├── agents/                 # Multi-agent definitions and LangGraph orchestration
@@ -230,18 +287,18 @@ ChatGBT-Clone/
 ### 1. Build the Docker image
 
 ```
-docker build -t chatgbt-clone .
+docker build -t chatgpt-clone .
 ```
 
 ### 2. Run the Docker container
 
 ```
 docker run -d \
-  --name chatgbt-clone \
+  --name chatgpt-clone \
   --restart always \
   -p 8080:8080 \
   --env-file .env \
-  chatgbt-clone
+  chatgpt-clone
 ```
 
 The app will be available at:
@@ -276,13 +333,13 @@ Create an Amazon ECR repository.
 Example full ECR image URI:
 
 ```
-<your-account-id>.dkr.ecr.us-east-1.amazonaws.com/chatgbt-clone
+<your-account-id>.dkr.ecr.us-east-1.amazonaws.com/chatgpt-clone
 ```
 
 For GitHub Secrets, only save the repository name:
 
 ```
-ECR_REPO=chatgbt-clone
+ECR_REPO=chatgpt-clone
 ```
 
 Do not save the full ECR URI as `ECR_REPO`.
@@ -380,11 +437,11 @@ Example:
 
 ```
 AWS_DEFAULT_REGION=us-east-1
-ECR_REPO=chatgbt-clone
+ECR_REPO=chatgpt-clone
 GOOGLE_MODEL=gemini-2.5-flash
 LANGSMITH_TRACING=true
 LANGSMITH_ENDPOINT=https://api.smith.langchain.com
-LANGSMITH_PROJECT=chatgbt-clone
+LANGSMITH_PROJECT=chatgpt-clone
 ```
 
 ## GitHub Actions Workflow
@@ -433,11 +490,11 @@ After running locally or deploying to AWS:
 
 Use these bullet points on your resume or portfolio to describe this project:
 
-- Designed and developed **ChatGBT-Clone**, a production-style multi-agent conversational AI system orchestrated with **LangGraph**, routing user queries across specialized agents (RAG, web search, general chat) for context-aware responses.
+- Designed and developed **ChatGPT-Clone**, a production-style multi-agent conversational AI system orchestrated with **LangGraph**, routing user queries across specialized agents (RAG, web search, general chat) for context-aware responses.
 - Implemented **retrieval-augmented generation (RAG)** using **ChromaDB** for document-grounded Q&A over PDF/DOCX/CSV uploads, and integrated **Tavily** for real-time web search capabilities.
 - Engineered a **FastAPI** backend with streaming chat endpoints, **SQLite**-backed conversation memory, and containerized the app with **Docker**, deploying to **AWS EC2** via an automated **GitHub Actions CI/CD pipeline** (ECR + self-hosted runner).
 
-> Tip: if this project is going on your resume, consider using a more original name than "ChatGBT-Clone" — something like "GraphMind AI" reads as an independent product rather than a reference to an existing brand.
+> Tip: if this project is going on your resume, consider using a more original name than "ChatGPT-Clone" — something like "GraphMind AI" reads as an independent product rather than a reference to an existing brand.
 
 ## Contributing
 
